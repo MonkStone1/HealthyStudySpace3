@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthyStudySpace</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #75cfca, #59b7b2);
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    .container {
+      margin-top: 30px;
+      display: inline-block;
+      background: #ffffffcc;
+      padding: 25px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    canvas {
+      border-radius: 15px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 1.3em;
+      font-weight: 600;
+    }
+
+    #status.good { color: #2e7d32; }
+    #status.bad { color: #c62828; }
+    #status.neutral { color: #555; }
+  </style>
+</head>
+<body>
+
+<h2>HealthyStudySpace</h2>
+
+<div class="container">
+  <canvas id="canvas" width="640" height="480"></canvas>
+  <div id="status" class="neutral">Завантаження моделі...</div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const statusText = document.getElementById("status");
+
+let detector, video;
+
+// звук при поганій поставі
+const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+let badPostureStart = null;
+
+async function setupCamera() {
+  video = document.createElement("video");
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+  video.srcObject = stream;
+  await video.play();
+  return video;
+}
+
+async function init() {
+  await tf.setBackend("webgl");
+  detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
+    modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+  });
+  await setupCamera();
+  detect();
+}
+
+async function detect() {
+  const poses = await detector.estimatePoses(video);
+  ctx.drawImage(video, 0, 0, 640, 480);
+
+  let posture = "neutral";
+
+  if (poses.length > 0) {
+    const kp = poses[0].keypoints;
+    const L = kp.find(p => p.name === "left_shoulder");
+    const R = kp.find(p => p.name === "right_shoulder");
+    const nose = kp.find(p => p.name === "nose");
+
+    // Контроль плечей (нахил)
+    if (L?.score > 0.4 && R?.score > 0.4) {
+      const diff = Math.abs(L.y - R.y);
+      const shouldersOK = diff < 12;
+
+      // Контроль нахилу голови вперед
+      let headOK = true;
+      if (nose?.score > 0.4) {
+        const avgShoulderX = (L.x + R.x) / 2;
+        headOK = Math.abs(nose.x - avgShoulderX) < 90;
+      }
+
+      posture = (shouldersOK && headOK) ? "good" : "bad";
+
+      // Малюємо лінію плечей
+      ctx.beginPath();
+      ctx.moveTo(L.x, L.y);
+      ctx.lineTo(R.x, R.y);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = posture === "good" ? "#00c853" : "#ff0000";
+      ctx.stroke();
+    }
+  }
+
+  // звук при поганій позі > 5 секунд
+  if (posture === "bad") {
+    if (!badPostureStart) badPostureStart = Date.now();
+    if (Date.now() - badPostureStart > 5000) beep.play();
+  } else {
+    badPostureStart = null;
+  }
+
+  // оновлення статусу
+  statusText.className = posture;
+  statusText.textContent =
+    posture === "good" ? "✅ Гарна постава" :
+    posture === "bad" ? "⚠️ Сидіть рівніше!" :
+    "🤔 Не видно плечей";
+
+  requestAnimationFrame(detect);
+}
+
+init();
+</script>
+
+</body>
+</html>
