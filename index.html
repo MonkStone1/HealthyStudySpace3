@@ -127,7 +127,7 @@
 
     <div class="exercise-card active" id="ex1">
       <h3 style="color:#00796b">Вправа 1: Часте кліпання</h3>
-      <video width="100%" height="auto" controls loop id="vid1">
+      <video width="100%" height="auto" controls loop muted id="vid1">
         <source src="Blink_eyes.mp4" type="video/mp4">
       </video>
       <div class="instruction-text">
@@ -139,7 +139,7 @@
 
     <div class="exercise-card" id="ex2">
       <h3 style="color:#00796b">Вправа 2: Міцне заплющення</h3>
-      <video width="100%" height="auto" controls loop id="vid2">
+      <video width="100%" height="auto" controls loop muted id="vid2">
         <source src="Long_blind.mp4" type="video/mp4">
       </video>
       <div class="instruction-text">
@@ -151,7 +151,7 @@
 
     <div class="exercise-card" id="ex3">
       <h3 style="color:#00796b">Вправа 3: Рух очима</h3>
-      <video width="100%" height="auto" controls loop id="vid3">
+      <video width="100%" height="auto" controls loop muted id="vid3">
         <source src="moving_eye.mp4" type="video/mp4">
       </video>
       <div class="instruction-text">
@@ -166,7 +166,7 @@
 </div>
 
 <script>
-// --- КОНСТАНТИ ТА ЛОГІКА (Вмонтовано систему MediaPipe) ---
+// --- КОНСТАНТИ ТА ЛОГІКА ---
 let reminderIntervalMs, isLooping, badPostureDelayMs, isPostureSoundEnabled;
 let pose, camera, videoElement;
 let badPostureStart = null;
@@ -233,7 +233,6 @@ function onResults(results) {
   const isReminderOpen = document.getElementById('popup-reminder').style.display === 'block';
   const isExerciseOpen = document.getElementById('exercise-screen').style.display === 'flex';
 
-  // Відстежуємо поставу тільки якщо екрани вправ закриті
   if (results.poseLandmarks && !isReminderOpen && !isExerciseOpen) {
     analyzePosture(results.poseLandmarks);
     drawSkeleton(results.poseLandmarks);
@@ -314,6 +313,10 @@ function goToExercises() {
   document.getElementById('popup-reminder').style.display = 'none';
   alarmSound.pause();
   document.getElementById('exercise-screen').style.display = 'flex';
+  
+  // АВТОПЛЕЙ першої вправи при переході
+  const activeVid = document.getElementById(`vid${currentEx}`);
+  if (activeVid) activeVid.play();
 }
 
 function finishExercises() {
@@ -324,12 +327,23 @@ function finishExercises() {
 }
 
 function changeExercise(dir) {
-    document.getElementById(`ex${currentEx}`).classList.remove('active');
+    // Зупиняємо поточне відео
     document.getElementById(`vid${currentEx}`).pause();
+    document.getElementById(`ex${currentEx}`).classList.remove('active');
+    
     currentEx += dir;
     if (currentEx > totalExercises) currentEx = 1;
     if (currentEx < 1) currentEx = totalExercises;
-    document.getElementById(`ex${currentEx}`).classList.add('active');
+    
+    const nextEx = document.getElementById(`ex${currentEx}`);
+    nextEx.classList.add('active');
+    
+    // АВТОПЛЕЙ наступного відео
+    const nextVid = document.getElementById(`vid${currentEx}`);
+    if (nextVid) {
+      nextVid.currentTime = 0;
+      nextVid.play();
+    }
 }
 </script>
 </body>
