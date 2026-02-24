@@ -141,6 +141,7 @@
       border-radius: 50%;
       transition: 0.3s;
       margin: 0 10px;
+      user-select: none;
     }
     .nav-btn:hover { background: rgba(255,255,255,0.5); }
 
@@ -235,7 +236,6 @@
       <h3 style="color:#00796b">Вправа 1: Часте кліпання</h3>
       <video width="100%" height="auto" controls loop id="vid1">
         <source src="Blink_eyes.mp4" type="video/mp4">
-        Ваш браузер не підтримує відео.
       </video>
       <div class="instruction-text">
         Швидко і легко кліпайте очима протягом 1-2 хвилин.<br>
@@ -248,11 +248,22 @@
       <h3 style="color:#00796b">Вправа 2: Міцне заплющення</h3>
       <video width="100%" height="auto" controls loop id="vid2">
         <source src="Long_blind.mp4" type="video/mp4">
-        Ваш браузер не підтримує відео.
       </video>
       <div class="instruction-text">
         Міцно заплющте очі на 3-5 секунд, потім відкрийте.<br>
         Допомагає зняти напругу з очних м'язів.
+      </div>
+      <button class="btn btn-primary" onclick="finishExercises()">✅ Закінчити та повернутись</button>
+    </div>
+
+    <div class="exercise-card" id="ex3">
+      <h3 style="color:#00796b">Вправа 3: Рух очима</h3>
+      <video width="100%" height="auto" controls loop id="vid3">
+        <source src="moving_eye.mp4" type="video/mp4">
+      </video>
+      <div class="instruction-text">
+        Повільно рухайте очима вгору-вниз та вліво-вправо.<br>
+        Це тренує очні м'язи та знімає втому.
       </div>
       <button class="btn btn-primary" onclick="finishExercises()">✅ Закінчити та повернутись</button>
     </div>
@@ -262,28 +273,29 @@
 </div>
 
 <script>
-// --- ПОВНИЙ ФУНКЦІОНАЛ СКРИПТА ---
+// Налаштування та AI змінні
 let reminderIntervalMs = 10000, isLooping = true, badPostureDelayMs = 5000, isPostureSoundEnabled = true;
 let detector, video, canvas, ctx, statusText, timerId, lastPoses = [], lastAnalysisTime = 0, isProcessingAi = false, badPostureStart = null;
 const detectionIntervalMs = 100;
 const alarmSound = new Audio("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg");
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 
-// Логіка слайдера
+// Логіка слайдера (всього 3 вправи)
 let currentEx = 1;
+const totalExercises = 3;
+
 function changeExercise(dir) {
     document.getElementById(`ex${currentEx}`).classList.remove('active');
-    document.getElementById(`vid${currentEx}`).pause(); // Зупиняємо попереднє
+    document.getElementById(`vid${currentEx}`).pause();
     
     currentEx = currentEx + dir;
-    if (currentEx > 2) currentEx = 1;
-    if (currentEx < 1) currentEx = 2;
+    if (currentEx > totalExercises) currentEx = 1;
+    if (currentEx < 1) currentEx = totalExercises;
     
     document.getElementById(`ex${currentEx}`).classList.add('active');
-    // Не запускаємо автоматично muted, щоб користувач міг сам натиснути Play у плеєрі
-    // або можна додати .play() якщо потрібно
 }
 
+// Запуск системи
 function startSystem() {
   reminderIntervalMs = (document.getElementById('timeUnit').value === 'min' ? 60000 : 1000) * parseInt(document.getElementById('timeValue').value);
   isLooping = document.getElementById('loopCheck').checked;
@@ -339,8 +351,10 @@ function goToExercises() {
 function finishExercises() {
   document.getElementById('exercise-screen').style.display = 'none';
   document.getElementById('overlay').style.display = 'none';
-  document.getElementById('vid1').pause();
-  document.getElementById('vid2').pause();
+  // Зупиняємо всі відео
+  for(let i=1; i<=totalExercises; i++) {
+    document.getElementById(`vid${i}`).pause();
+  }
   if (isLooping) startReminderTimer();
 }
 
