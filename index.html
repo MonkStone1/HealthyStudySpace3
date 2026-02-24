@@ -5,167 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HealthyStudySpace AI: Гімнастика для очей</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
 
   <style>
-    /* --- ОСНОВНИЙ СТИЛЬ --- */
+    /* --- СТИЛІ ТА ДИЗАЙН --- */
     body {
       font-family: "Segoe UI", Roboto, sans-serif;
       background: linear-gradient(135deg, #75cfca, #59b7b2);
-      text-align: center;
-      margin: 0; padding: 0;
-      color: #333; overflow-x: hidden;
-      min-height: 100vh;
+      text-align: center; margin: 0; padding: 0;
+      color: #333; overflow-x: hidden; min-height: 100vh;
     }
 
     h2 { margin-top: 20px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
     .container {
-      margin-top: 20px;
-      display: inline-block;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 20px;
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-      position: relative;
-      visibility: hidden;
+      margin-top: 20px; display: inline-block;
+      background: rgba(255, 255, 255, 0.9); padding: 20px;
+      border-radius: 20px; backdrop-filter: blur(10px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15); position: relative;
+      visibility: hidden; 
     }
 
-    canvas {
-      border-radius: 15px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-      max-width: 100%; height: auto;
-    }
+    canvas { border-radius: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); max-width: 100%; height: auto; }
 
-    #status {
-      margin-top: 15px; font-size: 1.3em; font-weight: 600;
-      padding: 10px; border-radius: 10px;
-    }
+    #status { margin-top: 15px; font-size: 1.3em; font-weight: 600; padding: 10px; border-radius: 10px; }
     #status.good { color: #2e7d32; background: #e8f5e9; }
     #status.bad { color: #c62828; background: #ffebee; }
     #status.neutral { color: #555; background: #f5f5f5; }
 
     /* --- МОДАЛЬНІ ВІКНА --- */
     .modal {
-      display: none; 
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 25px;
-      border-radius: 15px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-      text-align: left;
-      width: 360px;
-      z-index: 1000;
-      animation: popIn 0.3s ease-out;
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 25px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      text-align: left; width: 360px; z-index: 1000; animation: popIn 0.3s ease-out;
     }
     #settings-modal { display: block; }
 
-    @keyframes popIn {
-      from { transform: translate(-50%, -60%); opacity: 0; }
-      to { transform: translate(-50%, -50%); opacity: 1; }
-    }
+    @keyframes popIn { from { transform: translate(-50%, -60%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
 
     .modal h3 { margin-top: 0; text-align: center; color: #00796b; border-bottom: 2px solid #eee; padding-bottom: 10px; }
     .modal h4 { margin: 15px 0 5px 0; color: #004d40; font-size: 1.1em; }
-
-    .input-group { margin-bottom: 15px; }
-    .input-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-    
+    .input-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 15px; }
     input[type="number"] { padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 60px; }
     select { padding: 5px; border-radius: 5px; border: 1px solid #ccc; }
-    input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-
-    .btn {
-      width: 100%; margin-top: 15px; padding: 12px;
-      border-radius: 8px; border: none; cursor: pointer;
-      font-weight: bold; font-size: 1rem; transition: 0.2s;
-    }
+    
+    .btn { width: 100%; margin-top: 15px; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
     .btn-primary { background: #00796b; color: white; }
     .btn-primary:hover { background: #004d40; }
     .btn-close { background: #eee; color: #333; }
+    .btn-action { background: #00796b; color: white; width: auto; margin: 0; }
 
+    #overlay { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 999; }
+    
     /* --- ЕКРАН ВПРАВ --- */
     #exercise-screen {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: linear-gradient(135deg, #75cfca, #59b7b2);
-      z-index: 2000;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      overflow-y: auto;
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, #75cfca, #59b7b2); z-index: 2000;
+      flex-direction: column; justify-content: center; align-items: center; overflow-y: auto;
     }
-
-    .slider-container {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      max-width: 850px;
-    }
-
-    .exercise-card {
-      background: white;
-      width: 90%;
-      max-width: 600px;
-      border-radius: 20px;
-      padding: 30px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      text-align: center;
-      display: none;
-      animation: slideIn 0.4s ease-out;
-    }
-
-    .exercise-card.active { display: block; }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .nav-btn {
-      background: rgba(255,255,255,0.3);
-      border: none;
-      color: white;
-      font-size: 2.5rem;
-      cursor: pointer;
-      padding: 20px;
-      border-radius: 50%;
-      transition: 0.3s;
-      margin: 0 10px;
-    }
+    .slider-container { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 850px; }
+    .exercise-card { background: white; width: 90%; max-width: 600px; border-radius: 20px; padding: 30px; text-align: center; display: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .exercise-card.active { display: block; animation: slideUp 0.4s ease-out; }
+    
+    .nav-btn { background: rgba(255,255,255,0.3); border: none; color: white; font-size: 2.5rem; cursor: pointer; padding: 20px; border-radius: 50%; transition: 0.3s; margin: 0 10px; user-select: none; }
     .nav-btn:hover { background: rgba(255,255,255,0.5); }
 
-    video {
-      border-radius: 15px;
-      background: #000;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
-    }
-
-    .instruction-text {
-      font-size: 1.1em;
-      color: #444;
-      background: #e0f2f1;
-      padding: 15px;
-      border-radius: 10px;
-      margin: 15px 0;
-    }
-
-    #overlay {
-      display: block; position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
-      z-index: 999;
-    }
+    .instruction-text { font-size: 1.1em; color: #444; background: #e0f2f1; padding: 15px; border-radius: 10px; margin: 20px 0; line-height: 1.5; }
+    @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   </style>
 </head>
 <body>
@@ -173,7 +81,7 @@
 <h2>HealthyStudySpace AI</h2>
 
 <div class="container" id="main-container">
-  <canvas id="canvas" width="640" height="480"></canvas>
+  <canvas id="canvas"></canvas>
   <div id="status" class="neutral">Налаштування...</div>
 </div>
 
@@ -181,49 +89,35 @@
 
 <div id="settings-modal" class="modal">
   <h3>⚙️ Налаштування</h3>
-  
   <h4>⏰ Таймер розминки</h4>
-  <div class="input-group">
-    <div class="input-row">
-      <span>Нагадувати через:</span>
-      <div>
-        <input type="number" id="timeValue" value="10" min="1">
-        <select id="timeUnit"><option value="sec">Сек</option><option value="min">Хв</option></select>
-      </div>
-    </div>
-    <div class="input-row" style="margin-top: 8px;">
-      <label style="display:flex; align-items:center; cursor:pointer;">
-        <input type="checkbox" id="loopCheck" checked>
-        <span style="margin-left:8px;">Постійний цикл</span>
-      </label>
+  <div class="input-row">
+    <span>Нагадувати через:</span>
+    <div>
+      <input type="number" id="timeValue" value="10" min="1">
+      <select id="timeUnit"><option value="sec">Сек</option><option value="min">Хв</option></select>
     </div>
   </div>
-
+  <div class="input-row">
+    <label><input type="checkbox" id="loopCheck" checked> <span style="margin-left:8px;">Постійний цикл</span></label>
+  </div>
   <hr style="border:0; border-top:1px solid #eee;">
-
   <h4>⚠️ Контроль постави</h4>
-  <div class="input-group">
-    <div class="input-row">
-      <span>Час до сигналу (сек):</span>
-      <input type="number" id="postureDelayInput" value="5" min="1">
-    </div>
-    <div class="input-row" style="margin-top: 8px;">
-      <label style="display:flex; align-items:center; cursor:pointer;">
-        <input type="checkbox" id="postureSoundCheck" checked>
-        <span style="margin-left:8px;">Увімкнути звук помилки</span>
-      </label>
-    </div>
+  <div class="input-row">
+    <span>Час до сигналу (сек):</span>
+    <input type="number" id="postureDelayInput" value="5" min="1">
   </div>
-
+  <div class="input-row">
+    <label><input type="checkbox" id="postureSoundCheck" checked> <span style="margin-left:8px;">Увімкнути звук помилки</span></label>
+  </div>
   <button class="btn btn-primary" onclick="startSystem()">🚀 Запустити</button>
 </div>
 
 <div id="popup-reminder" class="modal">
-  <h3>🔔 Час розім'ятись!</h3>
-  <p>Ви працюєте вже довго.<br>Зробіть вправи для очей.</p>
-  <div style="display:flex; justify-content: center; gap: 10px;">
-      <button class="btn btn-close" style="width:auto;" onclick="closeReminder()">Пропустити</button>
-      <button class="btn btn-primary" style="width:auto;" onclick="goToExercises()">До вправ</button>
+  <h3 style="text-align:center">🔔 Час розім'ятись!</h3>
+  <p style="text-align:center">Ви працюєте вже довго.<br>Зробіть вправи для очей.</p>
+  <div style="display:flex; justify-content: center; gap: 10px; margin-top: 15px;">
+      <button class="btn btn-close" style="width:auto; margin:0;" onclick="closeReminder()">Пропустити</button>
+      <button class="btn btn-action" style="width:auto; margin:0;" onclick="goToExercises()">Перейти до вправ</button>
   </div>
 </div>
 
@@ -235,7 +129,6 @@
       <h3 style="color:#00796b">Вправа 1: Часте кліпання</h3>
       <video width="100%" height="auto" controls loop id="vid1">
         <source src="Blink_eyes.mp4" type="video/mp4">
-        Ваш браузер не підтримує відео.
       </video>
       <div class="instruction-text">
         Швидко і легко кліпайте очима протягом 1-2 хвилин.<br>
@@ -248,11 +141,22 @@
       <h3 style="color:#00796b">Вправа 2: Міцне заплющення</h3>
       <video width="100%" height="auto" controls loop id="vid2">
         <source src="Long_blind.mp4" type="video/mp4">
-        Ваш браузер не підтримує відео.
       </video>
       <div class="instruction-text">
         Міцно заплющте очі на 3-5 секунд, потім відкрийте.<br>
         Допомагає зняти напругу з очних м'язів.
+      </div>
+      <button class="btn btn-primary" onclick="finishExercises()">✅ Закінчити та повернутись</button>
+    </div>
+
+    <div class="exercise-card" id="ex3">
+      <h3 style="color:#00796b">Вправа 3: Рух очима</h3>
+      <video width="100%" height="auto" controls loop id="vid3">
+        <source src="moving_eye.mp4" type="video/mp4">
+      </video>
+      <div class="instruction-text">
+        Повільно рухайте очима вгору-вниз та вліво-вправо.<br>
+        Це тренує очні м'язи та знімає втому.
       </div>
       <button class="btn btn-primary" onclick="finishExercises()">✅ Закінчити та повернутись</button>
     </div>
@@ -262,61 +166,137 @@
 </div>
 
 <script>
-// --- ПОВНИЙ ФУНКЦІОНАЛ СКРИПТА ---
-let reminderIntervalMs = 10000, isLooping = true, badPostureDelayMs = 5000, isPostureSoundEnabled = true;
-let detector, video, canvas, ctx, statusText, timerId, lastPoses = [], lastAnalysisTime = 0, isProcessingAi = false, badPostureStart = null;
-const detectionIntervalMs = 100;
+// --- КОНСТАНТИ ТА ЛОГІКА (Вмонтовано систему MediaPipe) ---
+let reminderIntervalMs, isLooping, badPostureDelayMs, isPostureSoundEnabled;
+let pose, camera, videoElement;
+let badPostureStart = null;
+let timerId = null;
+let currentEx = 1;
+const totalExercises = 3;
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const statusText = document.getElementById("status");
 const alarmSound = new Audio("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg");
 const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 
-// Логіка слайдера
-let currentEx = 1;
-function changeExercise(dir) {
-    document.getElementById(`ex${currentEx}`).classList.remove('active');
-    document.getElementById(`vid${currentEx}`).pause(); // Зупиняємо попереднє
-    
-    currentEx = currentEx + dir;
-    if (currentEx > 2) currentEx = 1;
-    if (currentEx < 1) currentEx = 2;
-    
-    document.getElementById(`ex${currentEx}`).classList.add('active');
-    // Не запускаємо автоматично muted, щоб користувач міг сам натиснути Play у плеєрі
-    // або можна додати .play() якщо потрібно
-}
-
-function startSystem() {
-  reminderIntervalMs = (document.getElementById('timeUnit').value === 'min' ? 60000 : 1000) * parseInt(document.getElementById('timeValue').value);
+async function startSystem() {
+  const val = parseInt(document.getElementById('timeValue').value);
+  const unit = document.getElementById('timeUnit').value;
   isLooping = document.getElementById('loopCheck').checked;
+  reminderIntervalMs = (unit === 'min') ? val * 60 * 1000 : val * 1000;
   badPostureDelayMs = parseInt(document.getElementById('postureDelayInput').value) * 1000;
   isPostureSoundEnabled = document.getElementById('postureSoundCheck').checked;
 
   document.getElementById('settings-modal').style.display = 'none';
   document.getElementById('overlay').style.display = 'none';
   document.getElementById('main-container').style.visibility = 'visible';
-  init();
+
+  initAI();
 }
 
-async function init() {
-  canvas = document.getElementById("canvas"); ctx = canvas.getContext("2d");
-  statusText = document.getElementById("status");
+function initAI() {
   statusText.textContent = "🚀 Завантаження AI...";
+  videoElement = document.createElement('video');
+
+  pose = new Pose({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+  });
+
+  pose.setOptions({
+    modelComplexity: 0,
+    smoothLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  pose.onResults(onResults);
+
+  camera = new Camera(videoElement, {
+    onFrame: async () => { await pose.send({image: videoElement}); },
+    width: 640, height: 480
+  });
   
-  await tf.setBackend("webgl");
-  detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet);
-  
-  video = document.createElement("video");
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-  video.srcObject = stream;
-  await video.play();
-  
-  statusText.textContent = "✅ Система активна";
-  startReminderTimer();
-  renderLoop();
+  camera.start().then(() => {
+    statusText.textContent = "✅ Система активна";
+    startReminderTimer();
+  });
 }
 
+function onResults(results) {
+  canvas.width = results.image.width;
+  canvas.height = results.image.height;
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+  const isReminderOpen = document.getElementById('popup-reminder').style.display === 'block';
+  const isExerciseOpen = document.getElementById('exercise-screen').style.display === 'flex';
+
+  // Відстежуємо поставу тільки якщо екрани вправ закриті
+  if (results.poseLandmarks && !isReminderOpen && !isExerciseOpen) {
+    analyzePosture(results.poseLandmarks);
+    drawSkeleton(results.poseLandmarks);
+  }
+  ctx.restore();
+}
+
+function analyzePosture(landmarks) {
+  const leftShoulder = landmarks[11];
+  const rightShoulder = landmarks[12];
+  const nose = landmarks[0];
+  let posture = "neutral";
+
+  if (leftShoulder.visibility > 0.5 && rightShoulder.visibility > 0.5) {
+    const diffY = Math.abs(leftShoulder.y - rightShoulder.y);
+    const shouldersOK = diffY < 0.035; 
+    let headOK = true;
+    if (nose.visibility > 0.5) {
+      const avgShoulderX = (leftShoulder.x + rightShoulder.x) / 2;
+      headOK = Math.abs(nose.x - avgShoulderX) < 0.15;
+    }
+    posture = (shouldersOK && headOK) ? "good" : "bad";
+  }
+
+  if (posture === "bad") {
+    if (!badPostureStart) badPostureStart = Date.now();
+    if (Date.now() - badPostureStart > badPostureDelayMs) {
+      if (isPostureSoundEnabled) beep.play().catch(()=>{});
+    }
+  } else { badPostureStart = null; }
+
+  updateStatusUI(posture);
+}
+
+function updateStatusUI(posture) {
+  let newText = "", newClass = "";
+  if (posture === "good") { newText = "✅ Чудова постава!"; newClass = "good"; }
+  else if (posture === "bad") { newText = "⚠️ Вирівняйте спину!"; newClass = "bad"; }
+  else { newText = "🤔 Не бачу плечей"; newClass = "neutral"; }
+
+  if (statusText.className !== newClass) {
+    statusText.textContent = newText;
+    statusText.className = newClass;
+  }
+}
+
+function drawSkeleton(landmarks) {
+  const L = landmarks[11], R = landmarks[12];
+  if (L.visibility > 0.5 && R.visibility > 0.5) {
+    ctx.beginPath();
+    ctx.moveTo(L.x * canvas.width, L.y * canvas.height);
+    ctx.lineTo(R.x * canvas.width, R.y * canvas.height);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = statusText.className === "good" ? "#00e676" : "#ff1744";
+    ctx.stroke();
+  }
+}
+
+// --- ТАЙМЕРИ ТА ВПРАВИ ---
 function startReminderTimer() {
   if (timerId) clearTimeout(timerId);
   timerId = setTimeout(() => {
+    badPostureStart = null;
     document.getElementById('popup-reminder').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
     alarmSound.play().catch(()=>{});
@@ -332,69 +312,24 @@ function closeReminder() {
 
 function goToExercises() {
   document.getElementById('popup-reminder').style.display = 'none';
-  document.getElementById('exercise-screen').style.display = 'flex';
   alarmSound.pause();
+  document.getElementById('exercise-screen').style.display = 'flex';
 }
 
 function finishExercises() {
   document.getElementById('exercise-screen').style.display = 'none';
   document.getElementById('overlay').style.display = 'none';
-  document.getElementById('vid1').pause();
-  document.getElementById('vid2').pause();
+  for(let i=1; i<=totalExercises; i++) document.getElementById(`vid${i}`).pause();
   if (isLooping) startReminderTimer();
 }
 
-function renderLoop() {
-  ctx.drawImage(video, 0, 0, 640, 480);
-  const now = Date.now();
-  const hidden = document.getElementById('exercise-screen').style.display === 'flex' || document.getElementById('popup-reminder').style.display === 'block';
-
-  if (!isProcessingAi && !hidden && (now - lastAnalysisTime > detectionIntervalMs)) {
-    isProcessingAi = true;
-    detector.estimatePoses(video).then(poses => {
-      lastPoses = poses;
-      analyze(poses);
-      isProcessingAi = false;
-      lastAnalysisTime = now;
-    });
-  }
-  if (!hidden) drawSkeleton(lastPoses);
-  requestAnimationFrame(renderLoop);
-}
-
-function analyze(poses) {
-  if (!poses.length) return;
-  const kp = poses[0].keypoints;
-  const L = kp.find(p => p.name === "left_shoulder"), R = kp.find(p => p.name === "right_shoulder");
-  
-  let bad = false;
-  if (L?.score > 0.3 && R?.score > 0.3) {
-    if (Math.abs(L.y - R.y) > 20) bad = true;
-  }
-
-  if (bad) {
-    if (!badPostureStart) badPostureStart = Date.now();
-    if (Date.now() - badPostureStart > badPostureDelayMs) {
-      statusText.textContent = "⚠️ Вирівняйте спину!";
-      statusText.className = "bad";
-      if (isPostureSoundEnabled) beep.play().catch(()=>{});
-    }
-  } else {
-    badPostureStart = null;
-    statusText.textContent = "✅ Чудова постава!";
-    statusText.className = "good";
-  }
-}
-
-function drawSkeleton(poses) {
-  if (!poses.length) return;
-  const kp = poses[0].keypoints;
-  const L = kp.find(p => p.name === "left_shoulder"), R = kp.find(p => p.name === "right_shoulder");
-  if (L?.score > 0.3 && R?.score > 0.3) {
-    ctx.beginPath(); ctx.moveTo(L.x, L.y); ctx.lineTo(R.x, R.y);
-    ctx.lineWidth = 6; ctx.strokeStyle = (statusText.className === "good") ? "#00e676" : "#ff1744";
-    ctx.stroke();
-  }
+function changeExercise(dir) {
+    document.getElementById(`ex${currentEx}`).classList.remove('active');
+    document.getElementById(`vid${currentEx}`).pause();
+    currentEx += dir;
+    if (currentEx > totalExercises) currentEx = 1;
+    if (currentEx < 1) currentEx = totalExercises;
+    document.getElementById(`ex${currentEx}`).classList.add('active');
 }
 </script>
 </body>
