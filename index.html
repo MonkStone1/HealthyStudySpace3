@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HealthyStudySpace AI: Гімнастика для очей</title>
+  <title>HealthyStudySpace AI: Гімнастика для очей та спини</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
@@ -114,7 +114,7 @@
 
 <div id="popup-reminder" class="modal">
   <h3 style="text-align:center">🔔 Час розім'ятись!</h3>
-  <p style="text-align:center">Ви працюєте вже довго.<br>Зробіть вправи для очей.</p>
+  <p style="text-align:center">Ви працюєте вже довго.<br>Зробіть вправи для тіла та очей.</p>
   <div style="display:flex; justify-content: center; gap: 10px; margin-top: 15px;">
       <button class="btn btn-close" style="width:auto; margin:0;" onclick="closeReminder()">Пропустити</button>
       <button class="btn btn-action" style="width:auto; margin:0;" onclick="goToExercises()">Перейти до вправ</button>
@@ -161,6 +161,17 @@
       <button class="btn btn-primary" onclick="finishExercises()">✅ Закінчити та повернутись</button>
     </div>
 
+    <div class="exercise-card" id="ex4">
+      <h3 style="color:#00796b">Вправа 4: Гімнастика для шиї та спини</h3>
+      <video width="100%" height="auto" controls loop muted id="vid4">
+        <source src="Розминка спини.mp4" type="video/mp4">
+      </video>
+      <div class="instruction-text">
+        Повільно виконуйте відео-рекомендації розминки шиї та спини.
+      </div>
+      <button class="btn btn-primary" onclick="finishExercises()">✅ Закінчити та повернутись</button>
+    </div>
+
     <button class="nav-btn" onclick="changeExercise(1)">❯</button>
   </div>
 </div>
@@ -172,7 +183,7 @@ let pose, camera, videoElement;
 let badPostureStart = null;
 let timerId = null;
 let currentEx = 1;
-const totalExercises = 3;
+const totalExercises = 4; // Оновлено з 3 до 4
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -322,7 +333,10 @@ function goToExercises() {
 function finishExercises() {
   document.getElementById('exercise-screen').style.display = 'none';
   document.getElementById('overlay').style.display = 'none';
-  for(let i=1; i<=totalExercises; i++) document.getElementById(`vid${i}`).pause();
+  for(let i=1; i<=totalExercises; i++) {
+      const vid = document.getElementById(`vid${i}`);
+      if (vid) vid.pause();
+  }
   if (isLooping) startReminderTimer();
 }
 
